@@ -1,0 +1,70 @@
+@baseUrl = http://localhost:8080/api/v1
+@user = user
+# {{password}} comes from http-client.private.env.json (gitignored).
+# Copy http-client.private.env.json.example and fill in the password that
+# Spring Boot prints in the backend log at startup. Select the "local" environment.
+
+### List all gear
+GET {{baseUrl}}/gear
+Authorization: Basic {{user}}:{{password}}
+
+### Create gear item (all fields)
+# @name createGear
+POST {{baseUrl}}/gear
+Authorization: Basic {{user}}:{{password}}
+Content-Type: application/json
+
+{
+  "name": "Titanium spork",
+  "category": "Kitchen",
+  "weightGrams": 12,
+  "quantity": 1,
+  "notes": "Ultralight"
+}
+
+### Create gear item (required fields only)
+POST {{baseUrl}}/gear
+Authorization: Basic {{user}}:{{password}}
+Content-Type: application/json
+
+{
+  "name": "Tent",
+  "category": "Shelter"
+}
+
+### Create gear item - invalid (expect 400: empty name, negative weight)
+POST {{baseUrl}}/gear
+Authorization: Basic {{user}}:{{password}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "category": "Kitchen",
+  "weightGrams": -1
+}
+
+### Get by id (uses id from "createGear" above; send that first)
+@id = {{createGear.response.body.id}}
+
+GET {{baseUrl}}/gear/{{id}}
+Authorization: Basic {{user}}:{{password}}
+
+### Get by id - not found (expect 404)
+GET {{baseUrl}}/gear/00000000-0000-0000-0000-000000000000
+Authorization: Basic {{user}}:{{password}}
+
+### Update gear item
+PUT {{baseUrl}}/gear/{{createGear.response.body.id}}
+Authorization: Basic {{user}}:{{password}}
+Content-Type: application/json
+
+{
+  "name": "Titanium spork (long)",
+  "category": "Kitchen",
+  "weightGrams": 15,
+  "quantity": 2
+}
+
+### Delete gear item (expect 204)
+DELETE {{baseUrl}}/gear/{{createGear.response.body.id}}
+Authorization: Basic {{user}}:{{password}}
