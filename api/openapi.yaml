@@ -1,0 +1,156 @@
+openapi: 3.0.3
+info:
+  title: Packbase API
+  description: API for managing a hiking gear inventory.
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+
+tags:
+  - name: Gear
+    description: Hiking gear inventory items
+
+paths:
+  /gear:
+    get:
+      tags: [Gear]
+      summary: List all gear items
+      operationId: listGear
+      responses:
+        '200':
+          description: A list of gear items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GearItem'
+    post:
+      tags: [Gear]
+      summary: Add a new gear item
+      operationId: createGear
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GearItemInput'
+      responses:
+        '201':
+          description: Gear item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GearItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /gear/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Gear]
+      summary: Get a single gear item
+      operationId: getGearById
+      responses:
+        '200':
+          description: The gear item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GearItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Gear]
+      summary: Update a gear item
+      operationId: updateGear
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GearItemInput'
+      responses:
+        '200':
+          description: Gear item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GearItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Gear]
+      summary: Delete a gear item
+      operationId: deleteGear
+      responses:
+        '204':
+          description: Gear item deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    GearItemInput:
+      type: object
+      required:
+        - name
+        - category
+      properties:
+        name:
+          type: string
+          example: Titanium spork
+        category:
+          type: string
+          example: Kitchen
+        weightGrams:
+          type: integer
+          example: 12
+        quantity:
+          type: integer
+          default: 1
+        notes:
+          type: string
+
+    GearItem:
+      allOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+        - $ref: '#/components/schemas/GearItemInput'
+
+  responses:
+    BadRequest:
+      description: Invalid request payload
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string

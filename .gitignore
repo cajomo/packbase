@@ -1,0 +1,40 @@
+### Java / Maven ###
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+*.class
+
+### Spring Boot ###
+HELP.md
+!.mvn/wrapper/maven-wrapper.jar
+
+### Node / Angular ###
+node_modules/
+dist/
+.angular/cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+### Environment / secrets ###
+.env
+.env.*
+!.env.example
+application-local.yml
+application-local.properties
+
+### IDE ###
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+.DS_Store
+
+### Docker ###
+docker-compose.override.yml
+
+### Build / logs ###
+*.log
+build/
+out/

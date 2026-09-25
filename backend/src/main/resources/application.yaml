@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: packbase-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/packbase
+    username: packbase_app
+    password: localdev
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
