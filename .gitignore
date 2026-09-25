@@ -1,13 +1,14 @@
-### Java / Maven ###
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+### Java / Gradle ###
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
 *.class
 
 ### Spring Boot ###
 HELP.md
-!.mvn/wrapper/maven-wrapper.jar
+
+### Claude Code (personal) ###
+.claude/settings.local.json
+CLAUDE.local.md
 
 ### Node / Angular ###
 node_modules/
