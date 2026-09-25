@@ -8,7 +8,7 @@ Packbase is a self-hosted web app for tracking and organizing a hiking gear inve
 
 - `api/openapi.yaml` — OpenAPI 3.0 contract (source of truth for the REST API)
 - `backend/` — Spring Boot 4.1 / Java 21 / Gradle (Groovy DSL) service (`com.packbase.backend`)
-- `frontend/` — Angular app (planned; directory currently empty)
+- `frontend/` — Angular app (login, lists overview, list editor with drag-and-drop from a per-user item library). Currently **mocked**: users, lists and items live in localStorage via `PackStore` (`store.service.ts`) and do not call the backend yet. `npm start` serves on :4200; `proxy.conf.json` proxies `/api` to `localhost:8080` for when it does.
 - `infra/docker-compose.yml` — local PostgreSQL 16
 - `.github/workflows/` — CI (currently empty)
 

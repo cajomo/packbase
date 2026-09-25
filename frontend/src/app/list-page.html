@@ -1,0 +1,113 @@
+@if (list(); as l) {
+  <a class="back" routerLink="/lists">← All lists</a>
+
+  <header class="head">
+    <input
+      class="title"
+      [value]="l.name"
+      (change)="rename($event)"
+      (keydown.enter)="$any($event.target).blur()"
+      aria-label="List name"
+    />
+    <div class="stats">
+      <div><strong>{{ totalItems() }}</strong><span>items</span></div>
+      <div><strong>{{ fmt(totalWeight()) }}</strong><span>total weight</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section
+      class="card dropzone"
+      [class.over]="dragOver()"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+      aria-label="Items in this list"
+    >
+      @if (groups().length === 0) {
+        <div class="empty">
+          <div class="empty-icon" aria-hidden="true">⤵</div>
+          <h3>Nothing packed yet</h3>
+          <p class="muted">Drag items here from your library, or press + next to an item.</p>
+        </div>
+      }
+
+      @for (group of groups(); track group.category) {
+        <h3 class="cat">
+          {{ group.category }}
+          <span>{{ fmt(group.weightGrams) }}</span>
+        </h3>
+        @for (row of group.rows; track row.item.id) {
+          <div class="row">
+            <span class="item-name">{{ row.item.name }}</span>
+            <span class="item-weight muted">
+              {{ row.item.weightGrams === null ? '–' : fmt(row.item.weightGrams) }}
+            </span>
+            <div class="stepper">
+              <button type="button" class="icon-btn" aria-label="Decrease quantity"
+                (click)="store.setQuantity(l.id, row.item.id, row.quantity - 1)">−</button>
+              <span>{{ row.quantity }}</span>
+              <button type="button" class="icon-btn" aria-label="Increase quantity"
+                (click)="store.setQuantity(l.id, row.item.id, row.quantity + 1)">+</button>
+            </div>
+            <button type="button" class="icon-btn danger" [attr.aria-label]="'Remove ' + row.item.name"
+              (click)="store.removeEntry(l.id, row.item.id)">✕</button>
+          </div>
+        }
+      }
+    </section>
+
+    <aside class="card library">
+      <div class="library-head">
+        <h2>Your library</h2>
+        <p class="muted">Drag items onto the list</p>
+      </div>
+      <input type="search" [value]="query()" (input)="query.set($any($event.target).value)"
+        placeholder="Search library…" aria-label="Search library" />
+
+      <ul>
+        @for (item of library(); track item.id) {
+          <li draggable="true" (dragstart)="onDragStart($event, item)">
+            <span class="grip" aria-hidden="true">⋮⋮</span>
+            <div class="info">
+              <span class="item-name">{{ item.name }}</span>
+              <span class="muted small">
+                {{ item.category || 'Uncategorized' }}
+                @if (item.weightGrams !== null) { · {{ fmt(item.weightGrams) }} }
+              </span>
+            </div>
+            @if (quantities().get(item.id); as qty) {
+              <span class="badge">×{{ qty }}</span>
+            }
+            <button type="button" class="icon-btn" [attr.aria-label]="'Add ' + item.name + ' to list'"
+              (click)="add(item)">+</button>
+            <button type="button" class="icon-btn danger" [attr.aria-label]="'Delete ' + item.name + ' from library'"
+              (click)="deleteFromLibrary(item)">🗑</button>
+          </li>
+        } @empty {
+          <li class="muted none">
+            {{ store.library().length === 0 ? 'Items you create show up here.' : 'No matches.' }}
+          </li>
+        }
+      </ul>
+
+      <form class="new-item" (ngSubmit)="createItem()">
+        <h3>New item</h3>
+        <input name="newName" [(ngModel)]="newName" placeholder="Name" maxlength="200" required />
+        <div class="two">
+          <input name="newCategory" [(ngModel)]="newCategory" placeholder="Category" list="categories" maxlength="100" />
+          <input name="newWeight" type="number" min="0" [(ngModel)]="newWeight" placeholder="Weight (g)" />
+        </div>
+        <datalist id="categories">
+          @for (c of categories(); track c) { <option [value]="c"></option> }
+        </datalist>
+        <button class="btn" type="submit" [disabled]="!newName.trim()">Add to library &amp; list</button>
+      </form>
+    </aside>
+  </div>
+} @else {
+  <div class="card missing">
+    <h2>List not found</h2>
+    <a class="btn" routerLink="/lists">Back to your lists</a>
+  </div>
+}

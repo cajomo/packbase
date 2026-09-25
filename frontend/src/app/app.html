@@ -1,0 +1,18 @@
+<header class="topbar">
+  <a class="brand" routerLink="/">
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <path d="M2 20 9 7l4 6 2-3 7 10z" fill="currentColor" />
+    </svg>
+    Packbase
+  </a>
+  @if (store.user(); as user) {
+    <div class="user">
+      <span class="avatar" aria-hidden="true">{{ user.charAt(0).toUpperCase() }}</span>
+      <span class="name">{{ user }}</span>
+      <button type="button" class="btn ghost" (click)="logout()">Log out</button>
+    </div>
+  }
+</header>
+<main>
+  <router-outlet />
+</main>
