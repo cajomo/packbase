@@ -1,7 +1,10 @@
+import org.springframework.boot.gradle.tasks.run.BootRun
+
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.1.1'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.openapi.generator' version '7.25.0'
 }
 
 group = 'com.packbase'
@@ -30,6 +33,96 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-tasks.named('test') {
-	useJUnitPlatform()
+// --- OpenAPI: generate API interfaces and DTOs from the contract ---
+
+openApiGenerate {
+	generatorName = 'spring'
+	inputSpec = file('../api/openapi.yaml').absolutePath
+	outputDir = layout.buildDirectory.dir('generated/openapi').get().asFile.absolutePath
+	cleanupOutput = true
+	apiPackage = 'com.packbase.backend.api'
+	modelPackage = 'com.packbase.backend.api.model'
+	globalProperties = [apis: '', models: '']
+	configOptions = [
+		interfaceOnly        : 'true',
+		skipDefaultInterface : 'true',
+		useSpringBoot4       : 'true',
+		useJackson3          : 'true',
+		useJakartaEe         : 'true',
+		useTags              : 'true',
+		openApiNullable      : 'false',
+		documentationProvider: 'none',
+		annotationLibrary    : 'none',
+	]
+}
+
+sourceSets.main.java.srcDir(layout.buildDirectory.dir('generated/openapi/src/main/java'))
+
+tasks.named('compileJava') {
+	dependsOn 'openApiGenerate'
+}
+
+// --- Local database (infra/docker-compose.yml) ---
+
+def composeFile = file('../infra/docker-compose.yml').absolutePath
+
+tasks.register('dbUp', Exec) {
+	group = 'database'
+	description = 'Starts the local Postgres container and waits until it is healthy.'
+	commandLine 'docker', 'compose', '-f', composeFile, 'up', '-d', '--wait'
+}
+
+tasks.register('dbDown', Exec) {
+	group = 'database'
+	description = 'Stops and removes the local Postgres container (data volume is kept).'
+	commandLine 'docker', 'compose', '-f', composeFile, 'down'
+}
+
+// --- Tests: unit tests in 'test', @Tag("integration") tests in 'integrationTest' ---
+
+tasks.named('test', Test) {
+	useJUnitPlatform {
+		excludeTags 'integration'
+	}
+}
+
+def integrationTest = tasks.register('integrationTest', Test) {
+	group = 'verification'
+	description = 'Runs tests tagged "integration" (needs Postgres, started via dbUp).'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'integration'
+	}
+	dependsOn 'dbUp'
+	shouldRunAfter 'test'
+}
+
+tasks.named('check') {
+	dependsOn integrationTest
+}
+
+// --- Running the app ---
+
+tasks.withType(BootRun).configureEach {
+	dependsOn 'dbUp'
+}
+
+tasks.register('bootRunLocal', BootRun) {
+	group = 'application'
+	description = 'Runs the app with the "local" Spring profile (application-local.yml).'
+	def bootRun = tasks.named('bootRun', BootRun).get()
+	classpath = bootRun.classpath
+	mainClass = bootRun.mainClass
+	systemProperty 'spring.profiles.active', 'local'
+}
+
+tasks.register('dev') {
+	group = 'application'
+	description = 'Builds (incl. all tests), starts the database and runs the app with the "local" profile.'
+	dependsOn 'build', 'bootRunLocal'
+}
+
+tasks.named('bootRunLocal') {
+	mustRunAfter 'build'
 }
