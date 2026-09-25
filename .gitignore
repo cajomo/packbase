@@ -24,6 +24,7 @@ yarn-error.log*
 !.env.example
 application-local.yml
 application-local.properties
+http-client.private.env.json
 
 ### IDE ###
 .idea/
