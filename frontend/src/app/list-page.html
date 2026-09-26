@@ -15,6 +15,7 @@
       (change)="rename($event)"
       (keydown.enter)="$any($event.target).blur()"
       aria-label="List name"
+      maxlength="100"
     />
     <div class="stats">
       <button type="button" class="btn ghost" (click)="toggleCompact()" [attr.aria-pressed]="compact()">
@@ -139,6 +140,8 @@
       </form>
     </aside>
   </div>
+} @else if (!store.loaded()) {
+  <p class="muted loading">Loading…</p>
 } @else {
   <div class="card missing">
     <h2>List not found</h2>

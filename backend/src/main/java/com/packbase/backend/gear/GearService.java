@@ -51,7 +51,7 @@ public class GearService {
 
 	private static void apply(GearItemEntity entity, GearItemInput input) {
 		entity.setName(input.getName());
-		entity.setCategory(input.getCategory());
+		entity.setCategory(input.getCategory() != null ? input.getCategory() : "");
 		entity.setWeightGrams(input.getWeightGrams());
 		entity.setQuantity(input.getQuantity() != null ? input.getQuantity() : 1);
 		entity.setNotes(input.getNotes());

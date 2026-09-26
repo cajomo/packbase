@@ -52,3 +52,18 @@ main {
   .name { display: none; }
   main { padding: 1.25rem 1rem 3rem; }
 }
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 1200px;
+  margin: 1rem auto 0;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--danger);
+  font-size: 0.9rem;
+}

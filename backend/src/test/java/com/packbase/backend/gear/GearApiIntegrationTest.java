@@ -71,6 +71,16 @@ class GearApiIntegrationTest {
 	}
 
 	@Test
+	void categoryIsOptionalAndDefaultsToEmpty() throws Exception {
+		MockHttpSession session = registerAndLogin(mvc);
+
+		mvc.perform(post("/api/v1/gear").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"name\":\"Mystery\"}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.category").value(""));
+	}
+
+	@Test
 	void anonymousAccessIsRejected() throws Exception {
 		mvc.perform(get("/api/v1/gear")).andExpect(status().isUnauthorized());
 	}

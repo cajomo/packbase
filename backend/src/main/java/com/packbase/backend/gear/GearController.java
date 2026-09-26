@@ -56,11 +56,11 @@ public class GearController implements GearApi {
 
 	private static GearItem toDto(GearItemEntity entity) {
 		return new GearItem(
-			entity.getName(), 
-			entity.getCategory(), 
+			entity.getName(),
 			entity.getId(),
 			entity.getCreatedAt().atOffset(ZoneOffset.UTC)
 		)
+		.category(entity.getCategory())
 		.weightGrams(entity.getWeightGrams())
 		.quantity(entity.getQuantity())
 		.notes(entity.getNotes());

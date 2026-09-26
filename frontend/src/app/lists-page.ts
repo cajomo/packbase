@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { PackList, PackStore, formatWeight } from './store.service';
@@ -16,7 +16,7 @@ import { PackList, PackStore, formatWeight } from './store.service';
       <form class="card new" (ngSubmit)="create()">
         <h3>New list</h3>
         <input name="name" [(ngModel)]="name" placeholder="e.g. Kungsleden, 5 days" maxlength="100" required />
-        <button class="btn" type="submit" [disabled]="!name.trim()">Create list</button>
+        <button class="btn" type="submit" [disabled]="!name.trim() || creating()">Create list</button>
       </form>
 
       @for (list of store.lists(); track list.id) {
@@ -40,7 +40,9 @@ import { PackList, PackStore, formatWeight } from './store.service';
       }
     </div>
 
-    @if (store.lists().length === 0) {
+    @if (!store.loaded()) {
+      <p class="muted empty">Loading your lists…</p>
+    } @else if (store.lists().length === 0) {
       <p class="muted empty">No lists yet. Create your first one above.</p>
     }
   `,
@@ -64,11 +66,17 @@ export class ListsPage {
   private readonly router = inject(Router);
   protected name = '';
 
-  protected create(): void {
-    if (!this.name.trim()) return;
-    const id = this.store.createList(this.name);
-    this.name = '';
-    this.router.navigate(['/lists', id]);
+  protected readonly creating = signal(false);
+
+  protected async create(): Promise<void> {
+    if (!this.name.trim() || this.creating()) return;
+    this.creating.set(true);
+    const id = await this.store.createList(this.name);
+    this.creating.set(false);
+    if (id) {
+      this.name = '';
+      this.router.navigate(['/lists', id]);
+    }
   }
 
   protected stats(list: PackList) {

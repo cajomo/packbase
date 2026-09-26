@@ -5,7 +5,7 @@
     </svg>
     Packbase
   </a>
-  @if (store.user(); as user) {
+  @if (auth.user(); as user) {
     <div class="user">
       <span class="avatar" aria-hidden="true">{{ user.charAt(0).toUpperCase() }}</span>
       <span class="name">{{ user }}</span>
@@ -13,6 +13,12 @@
     </div>
   }
 </header>
+@if (store.error(); as message) {
+  <div class="banner" role="alert">
+    <span>{{ message }}</span>
+    <button type="button" class="icon-btn" aria-label="Dismiss" (click)="store.error.set(null)">✕</button>
+  </div>
+}
 <main>
   <router-outlet />
 </main>

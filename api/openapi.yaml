@@ -12,7 +12,9 @@ tags:
   - name: Auth
     description: Registration, login and session handling
   - name: Gear
-    description: Hiking gear inventory items
+    description: Hiking gear inventory items (the user's library)
+  - name: Lists
+    description: Packing lists that reference library items
 
 # Authentication is a server-side session in an HttpOnly cookie. Unsafe requests
 # (POST/PUT/DELETE) must also send the CSRF token from the XSRF-TOKEN cookie in
@@ -191,6 +193,98 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /lists:
+    get:
+      tags: [Lists]
+      summary: List the user's packing lists, newest first
+      operationId: listPackLists
+      responses:
+        '200':
+          description: The packing lists, each with its ordered entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PackList'
+    post:
+      tags: [Lists]
+      summary: Create a packing list
+      operationId: createPackList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackListInput'
+      responses:
+        '201':
+          description: List created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /lists/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Lists]
+      summary: Get a packing list
+      operationId: getPackListById
+      responses:
+        '200':
+          description: The packing list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Lists]
+      summary: Replace a packing list's name and entries
+      description: >
+        The entries array is the complete, ordered content of the list. Every
+        itemId must be a library item of the current user and appear only once.
+      operationId: updatePackList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackListInput'
+      responses:
+        '200':
+          description: List updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Lists]
+      summary: Delete a packing list (library items are kept)
+      operationId: deletePackList
+      responses:
+        '204':
+          description: List deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   securitySchemes:
     sessionCookie:
@@ -248,7 +342,6 @@ components:
       type: object
       required:
         - name
-        - category
       properties:
         name:
           type: string
@@ -257,8 +350,9 @@ components:
           example: Titanium spork
         category:
           type: string
-          minLength: 1
           maxLength: 100
+          default: ''
+          description: Empty means uncategorized.
           example: Kitchen
         weightGrams:
           type: integer
@@ -270,6 +364,63 @@ components:
           default: 1
         notes:
           type: string
+
+    ListEntry:
+      type: object
+      required:
+        - itemId
+        - quantity
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 9999
+        category:
+          type: string
+          maxLength: 100
+          description: >
+            Per-list category override. Omitted means "use the item's category";
+            an empty string means uncategorized.
+
+    PackListInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Kungsleden, 5 days
+        entries:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/ListEntry'
+
+    PackList:
+      type: object
+      required:
+        - id
+        - name
+        - createdAt
+        - entries
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListEntry'
 
     GearItem:
       allOf:

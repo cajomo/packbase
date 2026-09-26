@@ -2,6 +2,8 @@ package com.packbase.backend.gear;
 
 import com.packbase.backend.api.model.ErrorResponse;
 import com.packbase.backend.auth.EmailAlreadyRegisteredException;
+import com.packbase.backend.list.InvalidPackListException;
+import com.packbase.backend.list.PackListNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -19,6 +21,16 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(GearItemNotFoundException.class)
 	ResponseEntity<ErrorResponse> notFound(GearItemNotFoundException e) {
 		return error(HttpStatus.NOT_FOUND, e.getMessage());
+	}
+
+	@ExceptionHandler(PackListNotFoundException.class)
+	ResponseEntity<ErrorResponse> listNotFound(PackListNotFoundException e) {
+		return error(HttpStatus.NOT_FOUND, e.getMessage());
+	}
+
+	@ExceptionHandler(InvalidPackListException.class)
+	ResponseEntity<ErrorResponse> invalidList(InvalidPackListException e) {
+		return error(HttpStatus.BAD_REQUEST, e.getMessage());
 	}
 
 	@ExceptionHandler(EmailAlreadyRegisteredException.class)
