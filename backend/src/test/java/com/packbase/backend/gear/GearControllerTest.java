@@ -1,6 +1,7 @@
 package com.packbase.backend.gear;
 
 import com.packbase.backend.api.model.GearItemInput;
+import com.packbase.backend.auth.PackbaseUser;
 import com.packbase.backend.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,8 +18,11 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,6 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class GearControllerTest {
 
 	private static final UUID ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+	private static final UUID OWNER = UUID.fromString("22222222-2222-2222-2222-222222222222");
+	private static final PackbaseUser LOGGED_IN = new PackbaseUser(OWNER, "hiker@example.com", "n/a");
 
 	@Autowired
 	MockMvc mvc;
@@ -52,10 +58,26 @@ class GearControllerTest {
 	}
 
 	@Test
-	void listReturnsItems() throws Exception {
-		when(service.list()).thenReturn(List.of(entity("Spork")));
+	void anonymousRequestsReturn401() throws Exception {
+		mvc.perform(get("/api/v1/gear")).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/v1/gear/" + ID)).andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/v1/gear").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"name\":\"Spork\",\"category\":\"Kitchen\"}"))
+				.andExpect(status().isUnauthorized());
+	}
 
-		mvc.perform(get("/api/v1/gear"))
+	@Test
+	void writeWithoutCsrfTokenReturns403() throws Exception {
+		mvc.perform(post("/api/v1/gear").with(user(LOGGED_IN)).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"name\":\"Spork\",\"category\":\"Kitchen\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void listReturnsItemsForTheLoggedInUser() throws Exception {
+		when(service.list(OWNER)).thenReturn(List.of(entity("Spork")));
+
+		mvc.perform(get("/api/v1/gear").with(user(LOGGED_IN)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].name").value("Spork"))
 				.andExpect(jsonPath("$[0].id").value(ID.toString()))
@@ -64,9 +86,9 @@ class GearControllerTest {
 
 	@Test
 	void createReturns201WithLocation() throws Exception {
-		when(service.create(any(GearItemInput.class))).thenReturn(entity("Spork"));
+		when(service.create(eq(OWNER), any(GearItemInput.class))).thenReturn(entity("Spork"));
 
-		mvc.perform(post("/api/v1/gear").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/v1/gear").with(user(LOGGED_IN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
 						.content("{\"name\":\"Spork\",\"category\":\"Kitchen\"}"))
 				.andExpect(status().isCreated())
 				.andExpect(header().string("Location", "http://localhost/api/v1/gear/" + ID))
@@ -75,7 +97,7 @@ class GearControllerTest {
 
 	@Test
 	void createWithMissingNameReturns400() throws Exception {
-		mvc.perform(post("/api/v1/gear").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/v1/gear").with(user(LOGGED_IN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
 						.content("{\"category\":\"Kitchen\"}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.message").value(containsString("name")));
@@ -83,7 +105,7 @@ class GearControllerTest {
 
 	@Test
 	void createWithInvalidQuantityReturns400() throws Exception {
-		mvc.perform(post("/api/v1/gear").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/v1/gear").with(user(LOGGED_IN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
 						.content("{\"name\":\"Spork\",\"category\":\"Kitchen\",\"quantity\":0}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.message").value(containsString("quantity")));
@@ -91,7 +113,8 @@ class GearControllerTest {
 
 	@Test
 	void malformedJsonReturns400() throws Exception {
-		mvc.perform(post("/api/v1/gear").contentType(MediaType.APPLICATION_JSON).content("{nope"))
+		mvc.perform(post("/api/v1/gear").with(user(LOGGED_IN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+						.content("{nope"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.message").exists());
 	}
@@ -99,31 +122,32 @@ class GearControllerTest {
 	@Test
 	void getUnknownIdReturns404() throws Exception {
 		UUID id = UUID.randomUUID();
-		when(service.get(id)).thenThrow(new GearItemNotFoundException(id));
+		when(service.get(OWNER, id)).thenThrow(new GearItemNotFoundException(id));
 
-		mvc.perform(get("/api/v1/gear/" + id))
+		mvc.perform(get("/api/v1/gear/" + id).with(user(LOGGED_IN)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.message").exists());
 	}
 
 	@Test
 	void getWithInvalidUuidReturns400() throws Exception {
-		mvc.perform(get("/api/v1/gear/not-a-uuid"))
+		mvc.perform(get("/api/v1/gear/not-a-uuid").with(user(LOGGED_IN)))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.message").exists());
 	}
 
 	@Test
 	void putWithInvalidBodyReturns400() throws Exception {
-		mvc.perform(put("/api/v1/gear/" + ID).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(put("/api/v1/gear/" + ID).with(user(LOGGED_IN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
 						.content("{\"name\":\"\",\"category\":\"Kitchen\"}"))
 				.andExpect(status().isBadRequest());
 	}
 
 	@Test
 	void deleteReturns204() throws Exception {
-		mvc.perform(delete("/api/v1/gear/" + ID)).andExpect(status().isNoContent());
+		mvc.perform(delete("/api/v1/gear/" + ID).with(user(LOGGED_IN)).with(csrf()))
+				.andExpect(status().isNoContent());
 
-		verify(service).delete(ID);
+		verify(service).delete(OWNER, ID);
 	}
 }

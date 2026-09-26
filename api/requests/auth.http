@@ -1,0 +1,43 @@
+@baseUrl = http://localhost:8080/api/v1
+# {{email}} and {{password}} come from http-client.private.env.json (gitignored).
+# Copy http-client.private.env.json.example and select the "local" environment.
+#
+# Auth is a session cookie + CSRF: run "Get CSRF token" first, then register/login.
+# gear.http reuses the session cookie and the {{xsrf}} variable set below.
+# NOTE: the session cookie is Secure; if your client drops it over plain http,
+# use curl or the browser instead.
+
+### Get CSRF token (any request sets the XSRF-TOKEN cookie)
+GET {{baseUrl}}/auth/me
+
+> {%
+  const cookie = response.headers.valuesOf("Set-Cookie").find(c => c.startsWith("XSRF-TOKEN="));
+  if (cookie) client.global.set("xsrf", cookie.split(";")[0].split("=")[1]);
+%}
+
+### Register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+X-XSRF-TOKEN: {{xsrf}}
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+X-XSRF-TOKEN: {{xsrf}}
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Who am I
+GET {{baseUrl}}/auth/me
+
+### Logout
+POST {{baseUrl}}/auth/logout
+X-XSRF-TOKEN: {{xsrf}}

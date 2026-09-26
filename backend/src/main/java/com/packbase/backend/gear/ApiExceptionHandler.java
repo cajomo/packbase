@@ -1,9 +1,11 @@
 package com.packbase.backend.gear;
 
 import com.packbase.backend.api.model.ErrorResponse;
+import com.packbase.backend.auth.EmailAlreadyRegisteredException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,6 +19,17 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(GearItemNotFoundException.class)
 	ResponseEntity<ErrorResponse> notFound(GearItemNotFoundException e) {
 		return error(HttpStatus.NOT_FOUND, e.getMessage());
+	}
+
+	@ExceptionHandler(EmailAlreadyRegisteredException.class)
+	ResponseEntity<ErrorResponse> emailTaken(EmailAlreadyRegisteredException e) {
+		return error(HttpStatus.CONFLICT, e.getMessage());
+	}
+
+	/** Deliberately the same message for an unknown email and a wrong password. */
+	@ExceptionHandler(AuthenticationException.class)
+	ResponseEntity<ErrorResponse> badCredentials(AuthenticationException e) {
+		return error(HttpStatus.UNAUTHORIZED, "Invalid email or password");
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)

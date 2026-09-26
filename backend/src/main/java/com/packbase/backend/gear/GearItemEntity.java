@@ -33,6 +33,9 @@ public class GearItemEntity {
 	private String notes;
 
 	@Column(nullable = false, updatable = false)
+	private UUID ownerId;
+
+	@Column(nullable = false, updatable = false)
 	private Instant createdAt;
 
 	@PrePersist
@@ -44,6 +47,14 @@ public class GearItemEntity {
 
 	public UUID getId() {
 		return id;
+	}
+
+	public UUID getOwnerId() {
+		return ownerId;
+	}
+
+	public void setOwnerId(UUID ownerId) {
+		this.ownerId = ownerId;
 	}
 
 	public String getName() {
