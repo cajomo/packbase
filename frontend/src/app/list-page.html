@@ -100,7 +100,7 @@
               <span class="badge">×{{ qty }}</span>
             }
             <button type="button" class="icon-btn" [attr.aria-label]="'Add ' + item.name + ' to list'"
-              (click)="add(item)">+</button>
+              [disabled]="quantities().has(item.id)" (click)="add(item)">+</button>
             <button type="button" class="icon-btn danger" [attr.aria-label]="'Delete ' + item.name + ' from library'"
               (click)="deleteFromLibrary(item)">🗑</button>
           </li>

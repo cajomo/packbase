@@ -157,14 +157,12 @@ export class PackStore {
 
   // ---- entries ----
 
-  /** Adds one of the library item to the list, or bumps the quantity if already there. */
+  /** Adds one of the library item to the list; does nothing if it is already there (change quantity in the list). */
   addEntry(listId: string, itemId: string, category?: string): void {
     this.updateList(listId, (l) => {
-      const existing = l.entries.find((e) => e.itemId === itemId);
-      const entries = existing
-        ? l.entries.map((e) => (e.itemId === itemId ? { ...e, quantity: e.quantity + 1 } : e))
-        : [...l.entries, category === undefined ? { itemId, quantity: 1 } : { itemId, quantity: 1, category }];
-      return { ...l, entries };
+      if (l.entries.some((e) => e.itemId === itemId)) return l;
+      const entry = category === undefined ? { itemId, quantity: 1 } : { itemId, quantity: 1, category };
+      return { ...l, entries: [...l.entries, entry] };
     });
   }
 
