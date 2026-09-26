@@ -1,22 +1,36 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { LibraryItem, PackStore, formatWeight } from './store.service';
+
+const COMPACT_KEY = 'packbase.compact';
+const ENTRY_TYPE = 'application/x-packbase-entry';
+
+function readCompact(): boolean {
+  try {
+    return localStorage.getItem(COMPACT_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
 
 interface Row {
   item: LibraryItem;
   quantity: number;
+  category: string;
 }
 
 interface Group {
   category: string;
+  /** Value stored on entries ('' for Uncategorized). */
+  value: string;
   rows: Row[];
   weightGrams: number;
 }
 
 @Component({
   selector: 'app-list-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, RouterLinkActive],
   styleUrl: './list-page.css',
   templateUrl: './list-page.html',
 })
@@ -33,20 +47,21 @@ export class ListPage {
     const byId = new Map(this.store.library().map((i) => [i.id, i]));
     return (this.list()?.entries ?? []).flatMap((e) => {
       const item = byId.get(e.itemId);
-      return item ? [{ item, quantity: e.quantity }] : [];
+      return item ? [{ item, quantity: e.quantity, category: e.category ?? item.category }] : [];
     });
   });
 
   protected readonly groups = computed<Group[]>(() => {
     const map = new Map<string, Row[]>();
     for (const row of this.rows()) {
-      const key = row.item.category || 'Uncategorized';
+      const key = row.category || 'Uncategorized';
       map.set(key, [...(map.get(key) ?? []), row]);
     }
     return [...map.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([category, rows]) => ({
         category,
+        value: category === 'Uncategorized' ? '' : category,
         rows,
         weightGrams: rows.reduce((s, r) => s + (r.item.weightGrams ?? 0) * r.quantity, 0),
       }));
@@ -72,6 +87,20 @@ export class ListPage {
   });
 
   protected readonly dragOver = signal(false);
+
+  protected readonly compact = signal(readCompact());
+  protected readonly dragEntry = signal<string | null>(null);
+  protected readonly dropTarget = signal<{ itemId: string; after: boolean } | null>(null);
+  protected readonly dropCategory = signal<string | null>(null);
+
+  protected toggleCompact(): void {
+    this.compact.update((c) => !c);
+    try {
+      localStorage.setItem(COMPACT_KEY, String(this.compact()));
+    } catch {
+      // ignore
+    }
+  }
 
   protected newName = '';
   protected newCategory = '';
@@ -112,21 +141,88 @@ export class ListPage {
 
   protected onDragOver(event: DragEvent): void {
     event.preventDefault();
+    if (this.dragEntry()) return;
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
     this.dragOver.set(true);
   }
 
   protected onDragLeave(event: DragEvent): void {
     const zone = event.currentTarget as HTMLElement;
-    if (!zone.contains(event.relatedTarget as Node | null)) this.dragOver.set(false);
+    if (!zone.contains(event.relatedTarget as Node | null)) {
+      this.dragOver.set(false);
+      this.dropTarget.set(null);
+      this.dropCategory.set(null);
+    }
   }
 
   protected onDrop(event: DragEvent): void {
     event.preventDefault();
     this.dragOver.set(false);
+    if (this.dragEntry()) return;
     const itemId = event.dataTransfer?.getData('text/plain');
     if (itemId && this.store.library().some((i) => i.id === itemId)) {
       this.store.addEntry(this.id(), itemId);
     }
+  }
+
+  // ---- moving entries between / within categories ----
+
+  protected onRowDragStart(event: DragEvent, row: Row): void {
+    event.dataTransfer?.setData(ENTRY_TYPE, row.item.id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    this.dragEntry.set(row.item.id);
+  }
+
+  protected onRowDragEnd(): void {
+    this.dragEntry.set(null);
+    this.dropTarget.set(null);
+    this.dropCategory.set(null);
+  }
+
+  protected onRowDragOver(event: DragEvent, row: Row, group: Group): void {
+    if (!this.dragEntry()) return; // library drags bubble to the group handler
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.dropTarget.set({ itemId: row.item.id, after: event.clientY > rect.top + rect.height / 2 });
+    this.dropCategory.set(group.category);
+  }
+
+  protected onRowDrop(event: DragEvent, row: Row, group: Group): void {
+    const dragged = this.dragEntry();
+    if (!dragged) return;
+    event.preventDefault();
+    event.stopPropagation();
+    let before: string | null = row.item.id;
+    if (this.dropTarget()?.after) {
+      const idx = group.rows.findIndex((r) => r.item.id === row.item.id);
+      before = group.rows[idx + 1]?.item.id ?? null;
+    }
+    this.store.moveEntry(this.id(), dragged, group.value, before);
+    this.onRowDragEnd();
+  }
+
+  protected onGroupDragOver(event: DragEvent, group: Group): void {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = this.dragEntry() ? 'move' : 'copy';
+    if (this.dragEntry()) this.dropTarget.set(null);
+    this.dropCategory.set(group.category);
+  }
+
+  protected onGroupDrop(event: DragEvent, group: Group): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const dragged = this.dragEntry();
+    if (dragged) {
+      this.store.moveEntry(this.id(), dragged, group.value, null);
+    } else {
+      const itemId = event.dataTransfer?.getData('text/plain');
+      if (itemId && this.store.library().some((i) => i.id === itemId)) {
+        this.store.addEntry(this.id(), itemId, group.value);
+      }
+    }
+    this.dragOver.set(false);
+    this.onRowDragEnd();
   }
 }

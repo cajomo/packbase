@@ -1,6 +1,13 @@
 @if (list(); as l) {
   <a class="back" routerLink="/lists">← All lists</a>
 
+  <nav class="switcher" aria-label="Switch list">
+    @for (other of store.lists(); track other.id) {
+      <a [routerLink]="['/lists', other.id]" routerLinkActive="active"
+        [attr.aria-current]="other.id === l.id ? 'page' : null">{{ other.name }}</a>
+    }
+  </nav>
+
   <header class="head">
     <input
       class="title"
@@ -10,6 +17,9 @@
       aria-label="List name"
     />
     <div class="stats">
+      <button type="button" class="btn ghost" (click)="toggleCompact()" [attr.aria-pressed]="compact()">
+        {{ compact() ? 'Comfortable view' : 'Compact view' }}
+      </button>
       <div><strong>{{ totalItems() }}</strong><span>items</span></div>
       <div><strong>{{ fmt(totalWeight()) }}</strong><span>total weight</span></div>
     </div>
@@ -19,6 +29,7 @@
     <section
       class="card dropzone"
       [class.over]="dragOver()"
+      [class.compact]="compact()"
       (dragover)="onDragOver($event)"
       (dragleave)="onDragLeave($event)"
       (drop)="onDrop($event)"
@@ -33,27 +44,36 @@
       }
 
       @for (group of groups(); track group.category) {
-        <h3 class="cat">
-          {{ group.category }}
-          <span>{{ fmt(group.weightGrams) }}</span>
-        </h3>
-        @for (row of group.rows; track row.item.id) {
-          <div class="row">
-            <span class="item-name">{{ row.item.name }}</span>
-            <span class="item-weight muted">
-              {{ row.item.weightGrams === null ? '–' : fmt(row.item.weightGrams) }}
-            </span>
-            <div class="stepper">
-              <button type="button" class="icon-btn" aria-label="Decrease quantity"
-                (click)="store.setQuantity(l.id, row.item.id, row.quantity - 1)">−</button>
-              <span>{{ row.quantity }}</span>
-              <button type="button" class="icon-btn" aria-label="Increase quantity"
-                (click)="store.setQuantity(l.id, row.item.id, row.quantity + 1)">+</button>
+        <div class="group" [class.over-cat]="dragEntry() && dropCategory() === group.category"
+          (dragover)="onGroupDragOver($event, group)" (drop)="onGroupDrop($event, group)">
+          <h3 class="cat">
+            {{ group.category }}
+            <span>{{ fmt(group.weightGrams) }}</span>
+          </h3>
+          @for (row of group.rows; track row.item.id) {
+            <div class="row" draggable="true"
+              [class.dragging]="dragEntry() === row.item.id"
+              [class.drop-before]="dropTarget()?.itemId === row.item.id && !dropTarget()!.after"
+              [class.drop-after]="dropTarget()?.itemId === row.item.id && dropTarget()!.after"
+              (dragstart)="onRowDragStart($event, row)" (dragend)="onRowDragEnd()"
+              (dragover)="onRowDragOver($event, row, group)" (drop)="onRowDrop($event, row, group)">
+              <span class="grip" aria-hidden="true">⋮⋮</span>
+              <span class="item-name">{{ row.item.name }}</span>
+              <span class="item-weight muted">
+                {{ row.item.weightGrams === null ? '–' : fmt(row.item.weightGrams) }}
+              </span>
+              <div class="stepper">
+                <button type="button" class="icon-btn" aria-label="Decrease quantity"
+                  (click)="store.setQuantity(l.id, row.item.id, row.quantity - 1)">−</button>
+                <span>{{ row.quantity }}</span>
+                <button type="button" class="icon-btn" aria-label="Increase quantity"
+                  (click)="store.setQuantity(l.id, row.item.id, row.quantity + 1)">+</button>
+              </div>
+              <button type="button" class="icon-btn danger" [attr.aria-label]="'Remove ' + row.item.name"
+                (click)="store.removeEntry(l.id, row.item.id)">✕</button>
             </div>
-            <button type="button" class="icon-btn danger" [attr.aria-label]="'Remove ' + row.item.name"
-              (click)="store.removeEntry(l.id, row.item.id)">✕</button>
-          </div>
-        }
+          }
+        </div>
       }
     </section>
 

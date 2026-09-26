@@ -15,6 +15,8 @@ export interface LibraryItem {
 export interface ListEntry {
   itemId: string;
   quantity: number;
+  /** Per-list category override; falls back to the library item's category. */
+  category?: string;
 }
 
 export interface PackList {
@@ -156,13 +158,33 @@ export class PackStore {
   // ---- entries ----
 
   /** Adds one of the library item to the list, or bumps the quantity if already there. */
-  addEntry(listId: string, itemId: string): void {
+  addEntry(listId: string, itemId: string, category?: string): void {
     this.updateList(listId, (l) => {
       const existing = l.entries.find((e) => e.itemId === itemId);
       const entries = existing
         ? l.entries.map((e) => (e.itemId === itemId ? { ...e, quantity: e.quantity + 1 } : e))
-        : [...l.entries, { itemId, quantity: 1 }];
+        : [...l.entries, category === undefined ? { itemId, quantity: 1 } : { itemId, quantity: 1, category }];
       return { ...l, entries };
+    });
+  }
+
+  /**
+   * Moves an entry into `category` ('' = uncategorized), placed before `beforeItemId`,
+   * or last in the list (so last in its category) when that is null.
+   */
+  moveEntry(listId: string, itemId: string, category: string, beforeItemId: string | null): void {
+    this.updateList(listId, (l) => {
+      const entry = l.entries.find((e) => e.itemId === itemId);
+      if (!entry) return l;
+      const moved = { ...entry, category };
+      if (beforeItemId === itemId) {
+        return { ...l, entries: l.entries.map((e) => (e.itemId === itemId ? moved : e)) };
+      }
+      const rest = l.entries.filter((e) => e.itemId !== itemId);
+      const idx = beforeItemId ? rest.findIndex((e) => e.itemId === beforeItemId) : -1;
+      if (idx < 0) rest.push(moved);
+      else rest.splice(idx, 0, moved);
+      return { ...l, entries: rest };
     });
   }
 
