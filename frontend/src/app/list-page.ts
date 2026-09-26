@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, Directive, ElementRef, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { LibraryItem, PackStore, formatWeight } from './store.service';
@@ -28,9 +28,21 @@ interface Group {
   weightGrams: number;
 }
 
+/** Focuses and selects the text of an input as soon as it is rendered. */
+@Directive({ selector: 'input[appAutofocus]' })
+class Autofocus {
+  constructor() {
+    const el = inject<ElementRef<HTMLInputElement>>(ElementRef).nativeElement;
+    queueMicrotask(() => {
+      el.focus();
+      el.select();
+    });
+  }
+}
+
 @Component({
   selector: 'app-list-page',
-  imports: [FormsModule, RouterLink, RouterLinkActive],
+  imports: [FormsModule, RouterLink, RouterLinkActive, Autofocus],
   styleUrl: './list-page.css',
   templateUrl: './list-page.html',
 })
@@ -124,6 +136,27 @@ export class ListPage {
     );
     this.newName = '';
     this.newWeight = null;
+  }
+
+  /** Which name is being edited: 'row:<id>' in the list, 'lib:<id>' in the library. */
+  protected readonly editing = signal<string | null>(null);
+
+  protected cancelEdit(): void {
+    this.editing.set(null);
+  }
+
+  protected commitRename(item: LibraryItem, event: Event): void {
+    if (!this.editing()) return; // already committed or cancelled (Esc)
+    this.editing.set(null);
+    const name = (event.target as HTMLInputElement).value.trim();
+    if (!name || name === item.name) return;
+    if (
+      this.store.hasItemNamed(name, item.id) &&
+      !confirm(`You already have an item called "${name}" in your library. Rename anyway?`)
+    ) {
+      return;
+    }
+    this.store.renameItem(item.id, name);
   }
 
   protected deleteFromLibrary(item: LibraryItem): void {

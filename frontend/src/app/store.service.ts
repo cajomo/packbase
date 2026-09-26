@@ -212,6 +212,19 @@ export class PackStore {
     if (listId) this.addEntry(listId, item.id);
   }
 
+  /** Renames the library item; every list entry references it, so all lists follow. Empty names are ignored. */
+  renameItem(itemId: string, name: string): void {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    this.mutate((d) => ({ ...d, library: d.library.map((i) => (i.id === itemId ? { ...i, name: trimmed } : i)) }));
+  }
+
+  /** True if another library item (not `exceptId`) already has this name, ignoring case. */
+  hasItemNamed(name: string, exceptId: string): boolean {
+    const n = name.trim().toLowerCase();
+    return this.library().some((i) => i.id !== exceptId && i.name.toLowerCase() === n);
+  }
+
   /** Removes the item from the library and from every list that uses it. */
   deleteItem(itemId: string): void {
     this.mutate((d) => ({
