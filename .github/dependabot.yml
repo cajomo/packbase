@@ -1,18 +1,81 @@
 version: 2
+
+# Minor/patch updates are batched into one PR per ecosystem; major updates
+# (and anything that must move in lockstep) get their own PRs so they can be
+# reviewed separately. CI runs on every PR.
 updates:
   - package-ecosystem: gradle
     directory: /backend
     schedule:
       interval: weekly
+      day: monday
     open-pull-requests-limit: 5
+    # wait a few days after a release before proposing it (catches yanked/broken releases)
+    cooldown:
+      default-days: 3
+    labels: [dependencies, backend]
+    commit-message:
+      prefix: "deps(backend)"
+    groups:
+      # the Boot plugin and its dependency-management plugin should move together
+      spring-boot:
+        patterns:
+          - "org.springframework.boot"
+          - "io.spring.dependency-management"
+      minor-and-patch:
+        update-types: [minor, patch]
 
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
+      day: monday
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
+    labels: [dependencies, frontend]
+    commit-message:
+      prefix: "deps(frontend)"
+    ignore:
+      # @angular/build pins a TypeScript range (currently >=6.0 <6.1); 7.x breaks `npm ci`.
+      # Remove when the Angular version in use supports TypeScript 7.
+      - dependency-name: typescript
+        versions: [">=7"]
+    groups:
+      # Angular packages must stay on the same version
+      angular:
+        patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+      minor-and-patch:
+        update-types: [minor, patch]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
+    cooldown:
+      default-days: 3
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "deps(ci)"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Local Postgres image in infra/docker-compose.yml
+  - package-ecosystem: docker-compose
+    directory: /infra
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 3
+    labels: [dependencies, infra]
+    commit-message:
+      prefix: "deps(infra)"
+    ignore:
+      # A Postgres major bump needs a data migration (dump/restore or pg_upgrade), not a tag change.
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
