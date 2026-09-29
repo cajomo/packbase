@@ -24,7 +24,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
       # gradlew is stored without the executable bit (created on Windows)
       - run: chmod +x gradlew
       # build = test + integrationTest; integrationTest starts Postgres via
